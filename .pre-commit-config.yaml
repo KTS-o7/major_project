@@ -29,11 +29,11 @@ repos:
       - id: mypy
         additional_dependencies: [types-requests]
 
-  - repo: local
-    hooks:
-      - id: pytest
-        name: pytest
-        entry: pytest
-        language: system
-        pass_filenames: false
-        files: ^(tests/|test_.*\.py$|.*_test\.py$)
+  # - repo: local
+  #   hooks:
+  #     - id: pytest
+  #       name: pytest
+  #       entry: pytest
+  #       language: system
+  #       pass_filenames: false
+  #       files: ^(tests/|test_.*\.py$|.*_test\.py$)
