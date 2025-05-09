@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 # LogHub dataset resources - URLs for datasets from logpai/loghub repository
 LOGHUB_DATASETS = {
-    "HDFS": "https://zenodo.org/record/4399554/files/HDFS_1.zip",
+    "HDFS": "https://zenodo.org/record/8196385/files/HDFS_v1.zip",
     "Hadoop": "https://zenodo.org/record/4399554/files/Hadoop_2k.log.zip",
     "Spark": "https://zenodo.org/record/4399554/files/Spark_2k.log.zip",
     "Zookeeper": "https://zenodo.org/record/4399554/files/Zookeeper_2k.log.zip",

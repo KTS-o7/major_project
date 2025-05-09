@@ -8,6 +8,10 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
+import os
+import requests
+from tqdm import tqdm
+import logging
 
 
 def run_command(cmd, description=None):
@@ -16,20 +20,80 @@ def run_command(cmd, description=None):
         print(f"\n=== {description} ===")
 
     print(f"Running: {' '.join(cmd)}")
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    if result.returncode != 0:
-        print(f"Error: Command failed with exit code {result.returncode}")
-        print(f"STDERR: {result.stderr}")
+    # Read the output line by line
+    while True:
+        output = process.stdout.readline()
+        if output == '' and process.poll() is not None:
+            break
+        if output:
+            print(output.strip())
+
+    # Wait for the process to complete
+    return_code = process.wait()
+
+    if return_code != 0:
+        print(f"Error: Command failed with exit code {return_code}")
         return False
 
-    print(result.stdout)
     return True
 
 
 def ensure_directory(directory):
     """Create directory if it doesn't exist."""
     Path(directory).mkdir(parents=True, exist_ok=True)
+
+
+def download_file(url, destination):
+    """
+    Download a file from URL to the destination with progress bar.
+
+    Args:
+        url: The URL to download from
+        destination: The destination file path
+    """
+    logging.info(f"Starting download from {url} to {destination}")
+    session = requests.Session()
+    response = session.get(url, allow_redirects=True)
+    
+    if response.status_code != 200:
+        logging.error(f"Failed to access download URL: {response.status_code}")
+        raise Exception(f"Failed to access download URL: {response.status_code}")
+    
+    # Get the final URL after redirects
+    final_url = response.url
+    
+    # Now download the actual file
+    response = session.get(final_url, stream=True)
+    total_size = int(response.headers.get("content-length", 0))
+    block_size = 1024  # 1 Kibibyte
+
+    # Check if the file already exists and is complete
+    if os.path.exists(destination):
+        existing_size = os.path.getsize(destination)
+        if existing_size == total_size:
+            logging.info(f"File already downloaded and complete: {destination}")
+            return
+        else:
+            logging.warning(f"Incomplete file detected. Removing: {destination}")
+            os.remove(destination)
+
+    os.makedirs(os.path.dirname(destination), exist_ok=True)
+
+    desc = f"Downloading {os.path.basename(destination)}"
+    with open(destination, "wb") as file, tqdm(
+        desc=desc,
+        total=total_size,
+        unit="B",
+        unit_scale=True,
+        unit_divisor=1024,
+        file=sys.stdout,
+    ) as bar:
+        for data in response.iter_content(block_size):
+            file.write(data)
+            bar.update(len(data))
+    logging.info(f"Completed download to {destination}")
 
 
 def generate_dataset(args):

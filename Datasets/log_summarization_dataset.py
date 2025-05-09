@@ -11,15 +11,16 @@ from pydantic import BaseModel
 from tqdm import tqdm
 
 # Import our timestamp utilities
-from .log_timestamp_utils import (
+from log_timestamp_utils import (
     chunk_by_time_interval,
     detect_log_format,
     extract_time_range,
 )
 
 # Configure LLM client
-custom_client = OpenAI(api_key="dummy-key", base_url="http://localhost:11434/v1/")
-llm_model = "llama3.2:latest"  # You can change this to a different model if needed
+ollama_server_ip = os.getenv("OLLAMA_SERVER_IP")
+custom_client = OpenAI(api_key="dummy-key", base_url=f"http://{ollama_server_ip}:11434/v1/")
+llm_model = "llama2:latest"  # You can change this to a different model if needed
 
 
 # Define data models
