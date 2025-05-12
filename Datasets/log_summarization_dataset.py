@@ -19,8 +19,9 @@ from log_timestamp_utils import (
 
 # Configure LLM client
 ollama_server_ip = os.getenv("OLLAMA_SERVER_IP")
+print(f"OLLAMA_SERVER_IP: {ollama_server_ip}")
 custom_client = OpenAI(api_key="dummy-key", base_url=f"http://{ollama_server_ip}:11434/v1/")
-llm_model = "llama2:latest"  # You can change this to a different model if needed
+llm_model = "llama3.2:latest"  # You can change this to a different model if needed
 
 
 # Define data models
@@ -131,7 +132,7 @@ def determine_log_type(file_path: str) -> str:
         return "application"  # Default category
 
 
-@openai.call(llm_model, response_model=LogSummary, client=custom_client)
+@openai.call(model=llm_model, response_model=LogSummary, client=custom_client)
 def generate_log_summary(
     log_content: str,
     log_type: str,
@@ -169,6 +170,7 @@ Provide a concise summary that includes:
 5. Overall system status or health
 
 Focus on being factual, precise, and highlight the most important information that a system administrator would need to know.
+I want the response to be in JSON format.
 """
 
 

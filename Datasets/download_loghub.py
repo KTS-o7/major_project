@@ -11,22 +11,22 @@ from tqdm import tqdm
 
 # LogHub dataset resources - URLs for datasets from logpai/loghub repository
 LOGHUB_DATASETS = {
-    "HDFS": "https://zenodo.org/record/8196385/files/HDFS_v1.zip",
-    "Hadoop": "https://zenodo.org/record/4399554/files/Hadoop_2k.log.zip",
-    "Spark": "https://zenodo.org/record/4399554/files/Spark_2k.log.zip",
-    "Zookeeper": "https://zenodo.org/record/4399554/files/Zookeeper_2k.log.zip",
-    "BGL": "https://zenodo.org/record/4399554/files/BGL_2k.log.zip",
-    "HPC": "https://zenodo.org/record/4399554/files/HPC_2k.log.zip",
-    "Thunderbird": "https://zenodo.org/record/4399554/files/Thunderbird_2k.log.zip",
-    "Windows": "https://zenodo.org/record/4399554/files/Windows_2k.log.zip",
-    "Linux": "https://zenodo.org/record/4399554/files/Linux_2k.log.zip",
-    "Android": "https://zenodo.org/record/4399554/files/Android_2k.log.zip",
-    "HealthApp": "https://zenodo.org/record/4399554/files/HealthApp_2k.log.zip",
-    "Apache": "https://zenodo.org/record/4399554/files/Apache_2k.log.zip",
-    "OpenSSH": "https://zenodo.org/record/4399554/files/OpenSSH_2k.log.zip",
-    "OpenStack": "https://zenodo.org/record/4399554/files/OpenStack_2k.log.zip",
-    "Mac": "https://zenodo.org/record/4399554/files/Mac_2k.log.zip",
-    "Proxifier": "https://zenodo.org/record/4399554/files/Proxifier_2k.log.zip",
+    "HDFS": "https://zenodo.org/records/8196385/files/HDFS.tar.gz?download=1",
+    "Hadoop": "https://zenodo.org/records/8196385/files/Hadoop.tar.gz?download=1",
+    "Spark": "https://zenodo.org/records/8196385/files/Spark.tar.gz?download=1",
+    "Zookeeper": "https://zenodo.org/records/8196385/files/Zookeeper.tar.gz?download=1",
+    "BGL": "https://zenodo.org/records/8196385/files/BGL.tar.gz?download=1",
+    "HPC": "https://zenodo.org/records/8196385/files/HPC.tar.gz?download=1",
+    "Thunderbird": "https://zenodo.org/records/8196385/files/Thunderbird.tar.gz?download=1",
+    "Windows": "https://zenodo.org/records/8196385/files/Windows.tar.gz?download=1",
+    "Linux": "https://zenodo.org/records/8196385/files/Linux.tar.gz?download=1",
+    "Android": "https://zenodo.org/records/8196385/files/Android.tar.gz?download=1",
+    "HealthApp": "https://zenodo.org/records/8196385/files/HealthApp.tar.gz?download=1",
+    "Apache": "https://zenodo.org/records/8196385/files/Apache.tar.gz?download=1",
+    "OpenSSH": "https://zenodo.org/records/8196385/files/SSH.tar.gz?download=1",
+    "OpenStack": "https://zenodo.org/records/8196385/files/OpenStack.tar.gz?download=1",
+    "Mac": "https://zenodo.org/records/8196385/files/Mac.tar.gz?download=1",
+    "Proxifier": "https://zenodo.org/records/8196385/files/Proxifier.tar.gz?download=1",
 }
 
 

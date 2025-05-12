@@ -20,15 +20,7 @@ def run_command(cmd, description=None):
         print(f"\n=== {description} ===")
 
     print(f"Running: {' '.join(cmd)}")
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-    # Read the output line by line
-    while True:
-        output = process.stdout.readline()
-        if output == '' and process.poll() is not None:
-            break
-        if output:
-            print(output.strip())
+    process = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, text=True)
 
     # Wait for the process to complete
     return_code = process.wait()
