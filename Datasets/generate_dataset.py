@@ -184,7 +184,7 @@ def main():
     parser.add_argument(
         "--chunk_size",
         type=int,
-        default=100,
+        default=500,
         help="Number of lines per chunk (for line-based chunking)",
     )
     parser.add_argument(

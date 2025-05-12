@@ -11,15 +11,15 @@ from tqdm import tqdm
 
 # LogHub dataset resources - URLs for datasets from logpai/loghub repository
 LOGHUB_DATASETS = {
-    "HDFS": "https://zenodo.org/records/8196385/files/HDFS.tar.gz?download=1",
-    "Hadoop": "https://zenodo.org/records/8196385/files/Hadoop.tar.gz?download=1",
+    "HDFS": "https://zenodo.org/records/8196385/files/HDFS_v1.zip",
+    "Hadoop": "https://zenodo.org/records/8196385/files/Hadoop.zip",
     "Spark": "https://zenodo.org/records/8196385/files/Spark.tar.gz?download=1",
     "Zookeeper": "https://zenodo.org/records/8196385/files/Zookeeper.tar.gz?download=1",
     "BGL": "https://zenodo.org/records/8196385/files/BGL.tar.gz?download=1",
     "HPC": "https://zenodo.org/records/8196385/files/HPC.tar.gz?download=1",
     "Thunderbird": "https://zenodo.org/records/8196385/files/Thunderbird.tar.gz?download=1",
     "Windows": "https://zenodo.org/records/8196385/files/Windows.tar.gz?download=1",
-    "Linux": "https://zenodo.org/records/8196385/files/Linux.tar.gz?download=1",
+    "Linux": "https://zenodo.org/records/8196385/files/Linux.tar.gz",
     "Android": "https://zenodo.org/records/8196385/files/Android.tar.gz?download=1",
     "HealthApp": "https://zenodo.org/records/8196385/files/HealthApp.tar.gz?download=1",
     "Apache": "https://zenodo.org/records/8196385/files/Apache.tar.gz?download=1",

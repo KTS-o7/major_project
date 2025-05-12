@@ -19,7 +19,7 @@ from log_timestamp_utils import (
 
 # Configure LLM client
 ollama_server_ip = os.getenv("OLLAMA_SERVER_IP")
-print(f"OLLAMA_SERVER_IP: {ollama_server_ip}")
+# print(f"OLLAMA_SERVER_IP: {ollama_server_ip}")
 custom_client = OpenAI(api_key="dummy-key", base_url=f"http://{ollama_server_ip}:11434/v1/")
 llm_model = "llama3.2:latest"  # You can change this to a different model if needed
 
@@ -132,46 +132,55 @@ def determine_log_type(file_path: str) -> str:
         return "application"  # Default category
 
 
-@openai.call(model=llm_model, response_model=LogSummary, client=custom_client)
 def generate_log_summary(
     log_content: str,
     log_type: str,
     start_time: Optional[str] = None,
     end_time: Optional[str] = None,
-) -> str:
+) -> LogSummary:
     """
-    Generate a summary of a log chunk using the LLM.
-    The prompt is engineered to focus on extracting key information from log data.
-
-    Args:
-        log_content: The log content to summarize
-        log_type: The type of log (web_server, database, system, etc.)
-        start_time: The start time of the log chunk (if available)
-        end_time: The end time of the log chunk (if available)
+    Generate a summary of log content using LLM.
     """
-    time_info = ""
-    if start_time and end_time:
-        time_info = f"\nTime period: {start_time} to {end_time}"
-    elif start_time:
-        time_info = f"\nStart time: {start_time}"
-    elif end_time:
-        time_info = f"\nEnd time: {end_time}"
+    # Construct the prompt
+    prompt = f"""You are an expert system administrator analyzing log files.
+Log Type: {log_type}
+Time Range: {start_time or 'N/A'} to {end_time or 'N/A'}
 
-    return f"""
-You are an expert system administrator analyzing log files. Summarize the following {log_type} log content:{time_info}
-
+Log Content:
 {log_content}
 
-Provide a concise summary that includes:
-1. Do not make up any information, only use the information provided in the log file.
-2. The main events or activities captured in the logs
-3. Any errors or warnings that appear
-4. Key metrics or performance indicators
-5. Overall system status or health
+Please provide a concise summary focusing on:
+1. Main events and activities
+2. Any errors or warnings
+3. Key metrics or statistics
+4. Overall system status
 
-Focus on being factual, precise, and highlight the most important information that a system administrator would need to know.
-I want the response to be in JSON format.
+Format your response as a JSON object with the following structure:
+{{
+    "summary": (str) "Concise summary of the log content",
+    "events": (List[str]) "List of main events",
+    "errors": (List[str]) "List of errors if any",
+    "warnings": (List[str]) "List of warnings if any",
+    "key_metrics": (Dict[str, Any]) "Key metrics observed",
+    "severity": (str) "Severity of the log content"
+}}
 """
+
+    try:
+        # Make the API call and get raw response
+        response = custom_client.chat.completions.create(
+            model=llm_model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+            response_format={"type": "json_object"},
+        )
+        
+        # Parse the response JSON and create LogSummary object
+        response_json = json.loads(response.choices[0].message.content)
+        return LogSummary.model_validate(response_json)
+        
+    except Exception as e:
+        raise Exception(f"Error in generate_log_summary: {type(e).__name__}: {str(e)}")
 
 
 def process_log_file(
@@ -220,32 +229,43 @@ def process_log_file(
     print(f"Created {len(chunks)} chunks from {file_path}")
 
     log_entries = []
+    error_count = 0
 
-    # Process each chunk
-    for i, chunk in enumerate(tqdm(chunks, desc="Generating summaries")):
-        chunk_id = f"{os.path.basename(file_path)}_{i}"
+    # Process each chunk with a dynamic progress bar
+    with tqdm(total=len(chunks), desc="Generating summaries", dynamic_ncols=True) as pbar:
+        for i, chunk in enumerate(chunks):
+            try:
+                chunk_id = f"{os.path.basename(file_path)}_{i}"
 
-        # Skip chunks that are too short
-        if len(chunk) < 5:  # Arbitrary minimum size - adjust as needed
-            continue
+                # Skip chunks that are too short
+                if len(chunk) < 5:  # Arbitrary minimum size - adjust as needed
+                    pbar.update(1)
+                    continue
 
-        log_chunk = extract_log_metadata(chunk, file_path, chunk_id, log_format)
+                log_chunk = extract_log_metadata(chunk, file_path, chunk_id, log_format)
 
-        try:
-            # Generate summary using LLM
-            log_summary = generate_log_summary(
-                log_chunk.content,
-                log_chunk.log_type,
-                log_chunk.start_time,
-                log_chunk.end_time,
-            )
+                # Generate summary using LLM
+                log_summary = generate_log_summary(
+                    log_chunk.content,
+                    log_chunk.log_type,
+                    log_chunk.start_time,
+                    log_chunk.end_time,
+                )
+                
+                # Create log entry
+                log_entry = LogEntry(chunk=log_chunk, summary=log_summary)
+                log_entries.append(log_entry)
 
-            # Create log entry
-            log_entry = LogEntry(chunk=log_chunk, summary=log_summary)
-            log_entries.append(log_entry)
+            except Exception as e:
+                error_count += 1
+                pbar.set_postfix({"errors": error_count})
+                print(f"\nError processing chunk {i}: {str(e)}")
+            
+            finally:
+                pbar.update(1)
 
-        except Exception as e:
-            print(f"Error processing chunk {chunk_id}: {str(e)}")
+    if error_count > 0:
+        print(f"\nCompleted with {error_count} errors")
 
     return log_entries
 
@@ -270,6 +290,7 @@ def save_dataset(log_entries: List[LogEntry], output_dir: str, format: str = "js
         # Flatten the structure for CSV format
         data = []
         for entry in log_entries:
+            # Use model_dump() to convert Pydantic model to dict
             entry_dict = entry.model_dump()
             flattened = {
                 "chunk_id": entry_dict["chunk"]["chunk_id"],
@@ -299,8 +320,13 @@ def save_dataset(log_entries: List[LogEntry], output_dir: str, format: str = "js
     # Also save a training_ready format specifically for fine-tuning
     training_data = []
     for entry in log_entries:
+        # Use model_dump() to convert Pydantic model to dict
+        entry_dict = entry.model_dump()
         training_data.append(
-            {"input": entry.chunk.content, "output": entry.summary.summary}
+            {
+                "input": entry_dict["chunk"]["content"],
+                "output": entry_dict["summary"]["summary"]
+            }
         )
 
     output_file = output_path / "training_data.json"
