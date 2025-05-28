@@ -3,6 +3,7 @@ import json
 import os
 import time
 import random
+import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from openai import OpenAI
@@ -22,9 +23,9 @@ OPENAI_BASE_URL = os.getenv("OPENAPI_RC_URL")
 llm_model = os.getenv("LLM_MODEL")
 
 # Added for rate limiting
-DEFAULT_RATE_LIMIT_SECONDS = 2.0  # Default 1 second between requests
-MAX_RETRIES = 3  # Maximum number of retries for API calls
-BACKOFF_FACTOR = 2  # Exponential backoff factor
+DEFAULT_RATE_LIMIT_SECONDS = 5.0  # Default 5 second between requests
+MAX_RETRIES = 5  # Maximum number of retries for API calls
+BACKOFF_FACTOR = 3  # Exponential backoff factor
 
 # Define data models
 class LogChunk(BaseModel):
@@ -49,6 +50,19 @@ class LogEntry(BaseModel):
     """Represents a log chunk and its summary for training data."""
     chunk: LogChunk
     summary: LogSummary
+
+# New helper function for quality validation of a log entry
+def is_valid_log_entry(entry: LogEntry) -> bool:
+    """
+    Returns True if the log entry's summary meets quality criteria.
+    Criteria: summary must have at least 3 words and should not indicate a failure.
+    """
+    summary_words = entry.summary.summary.split()
+    if len(summary_words) < 3:
+        return False
+    if "Failed to generate summary" in entry.summary.summary:
+        return False
+    return True
 
 
 def read_log_file(file_path: str) -> List[str]:
@@ -82,7 +96,7 @@ def generate_log_summary(log_chunk: LogChunk, rate_limit_seconds: float = DEFAUL
     """Generate a log summary using the OpenAI API with rate limiting and retries."""
     client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
     
-    system_prompt = """You are an expert system administrator and log analyst specializing in infrastructure, application, and system logs. Your task is to analyze and extract structured information from log chunks with precision and technical accuracy.
+    base_system_prompt = """You are an expert system administrator and log analyst specializing in infrastructure, application, and system logs. Your task is to analyze and extract structured information from log chunks with precision and technical accuracy.
 
 ANALYSIS GUIDELINES:
 1. Extract factual information only - never hallucinate or infer details not explicitly present
@@ -128,6 +142,7 @@ Provide a comprehensive structured analysis with all required fields."""
 
     # Add retries with exponential backoff
     retry_count = 0
+    last_error = None
     while retry_count <= MAX_RETRIES:
         try:
             # Add rate limiting with jitter to prevent exact synchronization
@@ -140,10 +155,15 @@ Provide a comprehensive structured analysis with all required fields."""
                 jitter = random.uniform(0, 0.5)
                 time.sleep(rate_limit_seconds + jitter)
             
+            # Modify system prompt to include previous error if this is a retry
+            current_system_prompt = base_system_prompt
+            if retry_count > 0 and last_error:
+                current_system_prompt += f"\n\nIMPORTANT: This is a retry attempt after encountering the following error: {last_error}\n"
+            
             response = client.chat.completions.create(
                 model=llm_model,
                 messages=[
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": current_system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
                 response_format={"type": "json_object"},
@@ -165,14 +185,15 @@ Provide a comprehensive structured analysis with all required fields."""
             return log_summary
         
         except Exception as e:
+            last_error = str(e)
             retry_count += 1
             if retry_count <= MAX_RETRIES:
-                print(f"Error during API call: {str(e)}. Retrying ({retry_count}/{MAX_RETRIES})...")
+                print(f"Error during API call: {last_error}. Retrying ({retry_count}/{MAX_RETRIES})...")
             else:
-                print(f"Error generating summary after {MAX_RETRIES} retries: {str(e)}")
+                print(f"Error generating summary after {MAX_RETRIES} retries: {last_error}")
                 # Return a default summary in case of error
                 return LogSummary(
-                    summary=f"Failed to generate summary after {MAX_RETRIES} retries: {str(e)}",
+                    summary=f"Failed to generate summary after {MAX_RETRIES} retries: {last_error}",
                     severity="info"
                 )
 
@@ -290,23 +311,44 @@ def process_log_file(
     return log_entries
 
 
-def save_dataset(log_entries: List[LogEntry], output_dir: str, format: str = "jsonl"):
-    """Save the dataset to disk in the specified format."""
+def append_to_dataset(log_entries: List[LogEntry], output_dir: str, format: str = "jsonl"):
+    """Append log entries to the existing dataset files or create new ones if they don't exist."""
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-
+    
+    # Get current timestamp for backup files
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    
     if format == "jsonl":
         output_file = output_path / "log_summaries.jsonl"
-        with open(output_file, "w", encoding="utf-8") as f:
+        # Append to existing file if it exists
+        with open(output_file, "a", encoding="utf-8") as f:
             for entry in log_entries:
                 f.write(entry.model_dump_json() + "\n")
-
+    
     elif format == "json":
         output_file = output_path / "log_summaries.json"
+        # If file exists, read it first and append new entries
+        existing_entries = []
+        if output_file.exists():
+            with open(output_file, "r", encoding="utf-8") as f:
+                try:
+                    existing_entries = json.load(f)
+                except json.JSONDecodeError:
+                    # Create a backup if the file is corrupted
+                    backup_file = output_path / f"log_summaries_{timestamp}.json.bak"
+                    print(f"Warning: JSON file is corrupted. Creating backup at {backup_file}")
+                    shutil.copy2(output_file, backup_file)
+                    existing_entries = []
+        
+        # Append new entries and write back
+        all_entries = existing_entries + [entry.model_dump() for entry in log_entries]
         with open(output_file, "w", encoding="utf-8") as f:
-            json.dump([entry.model_dump() for entry in log_entries], f, indent=2)
-
+            json.dump(all_entries, f, indent=2)
+    
     elif format == "csv":
+        output_file = output_path / "log_summaries.csv"
+        # Convert entries to DataFrame rows
         data = []
         for entry in log_entries:
             entry_dict = entry.model_dump()
@@ -322,30 +364,72 @@ def save_dataset(log_entries: List[LogEntry], output_dir: str, format: str = "js
                 "warnings": ", ".join(entry_dict["summary"]["warnings"]) if entry_dict["summary"]["warnings"] else "",
             }
             data.append(flattened)
-
-        df = pd.DataFrame(data)
-        output_file = output_path / "log_summaries.csv"
-        df.to_csv(output_file, index=False)
-
+        
+        # Load existing CSV if it exists, or create a new DataFrame
+        df_new = pd.DataFrame(data)
+        if output_file.exists():
+            try:
+                df_existing = pd.read_csv(output_file)
+                df_combined = pd.concat([df_existing, df_new], ignore_index=True)
+                df_combined.to_csv(output_file, index=False)
+            except Exception as e:
+                # Handle corrupted CSV
+                backup_file = output_path / f"log_summaries_{timestamp}.csv.bak"
+                print(f"Warning: CSV file error: {str(e)}. Creating backup at {backup_file}")
+                shutil.copy2(output_file, backup_file)
+                df_new.to_csv(output_file, index=False)
+        else:
+            df_new.to_csv(output_file, index=False)
+    
     else:
         raise ValueError(f"Unsupported output format: {format}")
 
-    print(f"Dataset saved to {output_file}")
-
-    # Also save a training-ready format for fine-tuning
+    # Also update the training-ready format (filtering low-quality entries)
+    training_file = output_path / "training_data.json"
     training_data = []
+    
+    # Read existing training data if the file exists
+    if training_file.exists():
+        try:
+            with open(training_file, "r", encoding="utf-8") as f:
+                training_data = json.load(f)
+        except json.JSONDecodeError:
+            backup_file = output_path / f"log_summaries_{timestamp}.json.bak"
+            print(f"Warning: Training data file is corrupted. Creating backup at {backup_file}")
+            shutil.copy2(training_file, backup_file)
+            training_data = []
+    
+    # Add new entries only if they are valid
     for entry in log_entries:
+        if not is_valid_log_entry(entry):
+            continue  # Skip entry if low quality
         entry_dict = entry.model_dump()
         training_data.append({
             "input": "\n".join(entry_dict["chunk"]["content"]),
             "output": entry_dict["summary"]["summary"]
         })
-
-    output_file = output_path / "training_data.json"
-    with open(output_file, "w", encoding="utf-8") as f:
+    
+    # Write back the combined training data
+    with open(training_file, "w", encoding="utf-8") as f:
         json.dump(training_data, f, indent=2)
-
-    print(f"Training-ready format saved to {output_file}")
+    
+    # Also generate dataset for Llama Factory fine-tuning (instruction-based JSONL format)
+    llama_finetune_file = output_path / "llama_finetune_data.jsonl"
+    with open(llama_finetune_file, "w", encoding="utf-8") as f:
+        for entry in log_entries:
+            if not is_valid_log_entry(entry):
+                continue
+            entry_dict = entry.model_dump()
+            # Dynamically inject the log type for the instruction
+            sample = {
+                "instruction": f"Summarize the following {entry_dict['chunk']['log_type']} log entries for system diagnostics:",
+                "input": "\n".join(entry_dict["chunk"]["content"]),
+                "output": entry_dict["summary"]["summary"]
+            }
+            f.write(json.dumps(sample) + "\n")
+    print(f"Generated Llama finetune dataset at {llama_finetune_file}")
+    
+    print(f"Appended {len(log_entries)} entries to dataset files in {output_path}")
 
 
 def analyze_dataset(log_entries: List[LogEntry]):
@@ -438,23 +522,38 @@ def main():
     
     print(f"Found {len(log_files)} log files")
     
-    # Process each log file
+    # Process each log file and save incrementally
     all_log_entries = []
-    for file_path in log_files:
-        log_entries = process_log_file(
-            str(file_path),
-            args.chunk_method,
-            args.chunk_size,
-            args.overlap,
-            args.rate_limit,
-        )
-        all_log_entries.extend(log_entries)
     
-    # Save the dataset
-    save_dataset(all_log_entries, args.output_dir, args.output_format)
+    for file_index, file_path in enumerate(log_files):
+        print(f"\nProcessing file {file_index+1}/{len(log_files)}: {file_path}")
+        try:
+            log_entries = process_log_file(
+                str(file_path),
+                args.chunk_method,
+                args.chunk_size,
+                args.overlap,
+                args.rate_limit,
+            )
+            
+            if log_entries:
+                # Save after each file is processed
+                append_to_dataset(log_entries, args.output_dir, args.output_format)
+                all_log_entries.extend(log_entries)
+                print(f"✓ Saved progress after processing {file_path.name}")
+            else:
+                print(f"⚠ No entries generated for {file_path.name}")
+                
+        except Exception as e:
+            print(f"❌ Error processing file {file_path}: {str(e)}")
+            print("Continuing with next file...")
     
-    # Analyze the dataset
+    # Analyze the complete dataset
+    print("\n===== Final Dataset Summary =====")
     analyze_dataset(all_log_entries)
+    print(f"Total files processed: {len(log_files)}")
+    print(f"Total log entries: {len(all_log_entries)}")
+    print(f"Dataset saved to {args.output_dir}")
 
 
 if __name__ == "__main__":
