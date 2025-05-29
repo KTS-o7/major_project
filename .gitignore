@@ -175,3 +175,8 @@ cython_debug/
 
 # Loghub datasets
 data/
+
+deepseek*/
+h2o*/
+tiny*/
+
