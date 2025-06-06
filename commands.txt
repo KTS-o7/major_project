@@ -1,0 +1,95 @@
+
+
+python ./unilora/cudafft.py \
+  --model_name "PY007/TinyLlama-1.1B-Chat-v0.3" \
+  --dataset_path "./dataset/log_data.jsonl" \
+  --output_dir "./tinyllama-adapter" \
+  --max_length 1024 \
+  --num_epochs 3 \
+  --batch_size 4
+
+
+python ./unilora/cudamerge.py \
+  --base_model_path "PY007/TinyLlama-1.1B-Chat-v0.3" \
+  --lora_adapter_path "./tinyllama-adapter" \
+  --output_dir "./tinyllama-merged"
+
+
+python ./unilora/evaluate_models.py \
+  --base_model_path "PY007/TinyLlama-1.1B-Chat-v0.3" \
+  --finetuned_model_path "./tinyllama-merged" \
+  --test_data_path "./dataset/log_data.jsonl" \
+  --num_samples 25
+
+        python ./unilora/cudafft.py \
+          --model_name "h2oai/h2o-danube-1.8b-chat" \
+          --dataset_path "./dataset/log_data.jsonl" \
+          --output_dir "./h2o-danube-adapter" \
+          --max_length 1024 \
+          --num_epochs 3 \
+          --batch_size 4
+
+python ./unilora/cudamerge.py \
+  --base_model_path "h2oai/h2o-danube-1.8b-chat" \
+  --lora_adapter_path "./h2o-danube-adapter" \
+  --output_dir "./h2o-danube-merged"\
+
+python ./unilora/evaluate_models.py \
+  --base_model_path "h2oai/h2o-danube-1.8b-chat" \
+  --finetuned_model_path "./h2o-danube-merged" \
+  --test_data_path "./dataset/log_data.jsonl" \
+  --num_samples 25
+
+python ./unilora/cudafft.py \
+  --model_name "tensoropera/Fox-1-1.6B-Instruct-v0.1" \
+  --dataset_path "./dataset/log_data.jsonl" \
+  --output_dir "./fox-1-adapter" \
+  --max_length 1024 \
+  --num_epochs 3 \
+  --batch_size 4
+
+python ./unilora/cudamerge.py \
+  --base_model_path "tensoropera/Fox-1-1.6B-Instruct-v0.1" \ 
+  --lora_adapter_path "./fox-1-adapter" \ 
+  --output_dir "./fox-1-merged"
+
+
+python ./unilora/evaluate_models.py \
+  --base_model_path "tensoropera/Fox-1-1.6B-Instruct-v0.1" \ 
+  --finetuned_model_path "./fox-1-merged" --test_data_path "./dataset/log_data.jsonl" --num_samples 25
+
+
+python ./unilora/cudafft.py --model_name "HuggingFaceTB/SmolLM2-1.7B-Instruct" --dataset_path "./dataset/log_data.jsonl" --output_dir "./smollm-adapter" --max_length 1024 --num_epochs 3 --batch_size 4
+
+python ./unilora/cudamerge.py --base_model_path "HuggingFaceTB/SmolLM2-1.7B-Instruct" --lora_adapter_path "./smollm-adapter"  --output_dir "./smollm-merged" 
+
+python ./unilora/evaluate_models.py --base_model_path "HuggingFaceTB/SmolLM2-1.7B-Instruct" --finetuned_model_path "./smollm-merged" --test_data_path "./dataset/log_data.jsonl" --num_samples 50
+
+python ./unilora/cudafft.py \
+  --model_name "deepseek-ai/deepseek-coder-1.3b-instruct" \
+  --dataset_path "./dataset/log_data.jsonl" \
+  --output_dir "./deepseek-coder-adapter" \
+  --max_length 1024 \
+  --num_epochs 3 \
+  --batch_size 4
+
+python ./unilora/cudamerge.py \
+  --base_model_path "deepseek-ai/deepseek-coder-1.3b-instruct" \
+  --lora_adapter_path "./deepseek-coder-adapter" \
+  --output_dir "./deepseek-coder-merged"
+
+python ./unilora/evaluate_models.py --base_model_path "deepseek-ai/deepseek-coder-1.3b-instruct" --finetuned_model_path "./deepseek-coder-merged" --test_data_path "./dataset/log_data.jsonl" --num_samples 50
+
+
+  python ./unilora/cudafft.py --model_name "openai-community/gpt2" --dataset_path "./dataset/log_data.jsonl" --output_dir "./gpt2-adapter" --max_length 1024  --num_epochs 3 --batch_size 4
+
+python ./unilora/cudamerge.py \
+  --base_model_path "openai-community/gpt2" \
+  --lora_adapter_path ".gpt2-adapter" \
+  --output_dir "./gpt2-merged"
+
+python ./unilora/evaluate_models.py \
+  --base_model_path "openai-community/gpt2" \ 
+  --finetuned_model_path "./gpt2-merged" \ 
+  --test_data_path "./dataset/log_data.jsonl" \
+  --num_samples 25
