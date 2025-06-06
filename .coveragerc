@@ -1,0 +1,51 @@
+[run]
+# Source code to measure coverage for
+source = logic/cuda
+
+# Omit certain files/patterns
+omit = 
+    */tests/*
+    */test_*
+    */__pycache__/*
+    */.*
+    setup.py
+    conftest.py
+
+# Include branch coverage
+branch = True
+
+# Parallel processing
+parallel = True
+
+[report]
+# Reporting options
+show_missing = True
+skip_covered = False
+sort = Cover
+
+# Precision for coverage percentages
+precision = 2
+
+# Exclude lines from coverage
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if self.debug:
+    if settings.DEBUG
+    raise AssertionError
+    raise NotImplementedError
+    if 0:
+    if __name__ == .__main__.:
+    class .*\bProtocol\):
+    @(abc\.)?abstractmethod
+
+[html]
+# HTML report directory
+directory = coverage_html
+
+# Show contexts
+show_contexts = True
+
+[xml]
+# XML report file
+output = coverage.xml 
