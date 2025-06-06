@@ -28,7 +28,7 @@ for model in "${MODELS[@]}"; do
     if [ -d "$model" ]; then
         echo "Evaluating: $model"
         model_name=$(basename "$model")
-        python evaluate_model.py \
+        python eval.py \
             --model_path "$model" \
             --dataset_path "$DATASET_PATH" \
             --sample_size $SAMPLE_SIZE \
