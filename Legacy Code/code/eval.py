@@ -116,10 +116,10 @@ def evaluate_and_compare(
         base_scores["meteor"].append(single_meteor_score(reference_tokens, base_tokens))
         finetuned_scores["meteor"].append(single_meteor_score(reference_tokens, finetuned_tokens))
 
-    avg_base_bleu = sum(base_scores["bleu"]) / len(base_scores["bleu"])
-    avg_finetuned_bleu = sum(finetuned_scores["bleu"]) / len(finetuned_scores["bleu"])
-    avg_base_meteor = sum(base_scores["meteor"]) / len(base_scores["meteor"])
-    avg_finetuned_meteor = sum(finetuned_scores["meteor"]) / len(finetuned_scores["meteor"])
+    avg_base_bleu = sum(base_scores["bleu"]) / len(base_scores["bleu"]) if base_scores["bleu"] else 0.0
+    avg_finetuned_bleu = sum(finetuned_scores["bleu"]) / len(finetuned_scores["bleu"]) if finetuned_scores["bleu"] else 0.0
+    avg_base_meteor = sum(base_scores["meteor"]) / len(base_scores["meteor"]) if base_scores["meteor"] else 0.0
+    avg_finetuned_meteor = sum(finetuned_scores["meteor"]) / len(finetuned_scores["meteor"]) if finetuned_scores["meteor"] else 0.0
 
     print("\n--- Model Evaluation Results ---")
     print(f"{'Metric':<15} | {'Base Model':<15} | {'Finetuned Model':<15}")
