@@ -22,7 +22,7 @@ def run_evaluation_examples():
     print("-" * 40)
     cmd1 = [
         "python",
-        "evaluate_model.py",
+        "eval.py",
         "--model_path",
         model_path,
         "--dataset_path",
